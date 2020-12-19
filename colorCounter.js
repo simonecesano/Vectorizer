@@ -8,6 +8,10 @@ var histogram = function(data){
     return h;
 }
 
+// ------------------------------------------
+// lots of stuff from chroma.js
+// ------------------------------------------
+
 const LAB_CONSTANTS = {
     // Corresponds roughly to RGB brighter/darker
     Kn: 18,
