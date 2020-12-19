@@ -1,7 +1,7 @@
 // checkbox for cleanup
 // highlight color
 
-importScripts("/imagetracer_v1.2.5.js");
+importScripts("./imagetracer_v1.2.5.js");
 importScripts("https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.1.0/chroma.min.js");
 
 // https://developer.mozilla.org/en-US/docs/Web/API/ImageData/ImageData
