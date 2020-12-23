@@ -67,37 +67,34 @@ td.nr { text-align: right }
     </div>
     <div class="range">
       <label for="threshold">threshold</label>
-      <input type="range" id="threshold" v-model="threshold" min="0" max="1" step="0.01" />
-      <button class="favorite styled" @click="vectorize()" type="button">analyse</button>
+      <input type="range" id="threshold" v-model="threshold" min="0" max="255" step="1" />
+    </div>
+    <div style="padding-bottom:12px">
+      <label for="refColor">Color</label>
+      <input type="text" id="refColor" name="refColor" v-model="refColor" >
+      <label for="threshold">Threshold</label>
+      <input type="text" id="threshold" name="threshold" v-model="threshold" >
+    </div>
+    <div style="padding-bottom:12px">
+      <button class="favorite styled" @click="calcDistance()" type="button">show distance</button>
+      <button class="favorite styled" @click="vectorize()" type="button">vectorize</button>
     </div>
     <div>
       <canvas style="display:block;background:grey;" ref="output" id="output" height="600" width="600" style="width:600px"></canvas>
     </div>
-    <pre ref="fragShader">{{ fragSource }}</pre>
   </div>
 </template>
 <script>
 module.exports = {
     data: function () {
 	return {
-	    pixelCount: 1,
-	    maxDistance: 256,
-	    frequencyFactor: 10,
-	    lookup: undefined,
-	    tick: (new Date()).getTime(),
-	    svg: undefined,
-
-	    progress: undefined,
-	    
-	    width: undefined,
-	    height: undefined,
-	    scale: 1,
-	    unfiltered: false,
-	    outputColors: undefined,
 	    imageData: undefined,
 	    fragSource: undefined,
-	    threshold: 0.5,
+	    refColor: '#ffffff',
+	    threshold: 128,
 	    draw: function(){},
+	    gl: undefined,
+	    kernel: undefined,
 	};
     },
     computed: {
@@ -115,7 +112,7 @@ module.exports = {
 	ctx.fillStyle = "LightSlateGray";
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-	c.loadImage('modern-construction-tube-and-project-scaled.jpg')
+	c.loadImage('101042ab.jpg')
     },
     destroyed: function(){
     },
@@ -125,19 +122,19 @@ module.exports = {
 	threshold: function(v){
 	    this.draw()
 	},
+	refColor: function(){
+	    this.draw()
+	}
     },
     methods: {
+	calcDistance: function(){
+
+	},
 	vectorize: function(){
 	    var gl = this.$refs.output.getContext("webgl2", { preserveDrawingBuffer: true });
-	    // gl.finish()
-	    // gl.flush()
-
-
 	    var pixels = new Uint8ClampedArray(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
 	    gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 	    console.log(pixels);
-	    // var img = new ImageData(pixels, gl.drawingBufferWidth, gl.drawingBufferHeight);
-	    // console.log(img);
 	    console.log(gl.canvas)
 	    this.$refs.paper.getContext("2d").drawImage(gl.canvas, 0, 0)
 	},
@@ -178,6 +175,7 @@ module.exports = {
 	    var gl = canvasOut.getContext("webgl2", { preserveDrawingBuffer: true });
 	    var kernels = new Kernels({ canvas: canvasOut, context: gl, mode: 'gpu' })
 
+	    c.gl = gl;
 	    
 	    console.log(canvas);
 	    
@@ -185,6 +183,9 @@ module.exports = {
 	    img.onload = function() {
 		console.log(this);
 		var r = img;
+
+		canvas.style.width = "900px"
+		canvasOut.style.width = "900px"
 		
 		canvas.width  = r.width;
 		canvas.height = r.height;
@@ -197,38 +198,44 @@ module.exports = {
 		
 		var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
-		function euclDistance(labA, labB){
-		    const r = Math.sqrt(
-			Math.pow(labA[0] - labB[0], 2) + Math.pow(labA[1] - labB[1], 2) + Math.pow(labA[2] - labB[2], 2)
-		    );
-		    return r
-		}
-		var l = imgData.width * imgData.height * 4;
-		var d = imgData.data
-		var o = new Uint8ClampedArray(l)
-
 		console.time('distance');
-		for (var p = 0; p < l; p += 4) {
-		    var rgb = [ d[p], d[p+1], d[p+2] ];
-		    var dist = euclDistance(rgb, [255, 0, 0]);
-		    o[p] = o[p+1] = o[p+2] = dist;
-		    o[p+3] = 255;
+		if (false) {
+		    function euclDistance(labA, labB){
+			const r = Math.sqrt(
+			    Math.pow(labA[0] - labB[0], 2) + Math.pow(labA[1] - labB[1], 2) + Math.pow(labA[2] - labB[2], 2)
+			);
+			return r
+		    }
+		    var l = imgData.width * imgData.height * 4;
+		    
+		    var d = imgData.data
+		    var o = new Uint8ClampedArray(l)
+		    
+		    for (var p = 0; p < l; p += 4) {
+			var rgb = [ d[p], d[p+1], d[p+2] ];
+			var dist = euclDistance(rgb, [255, 0, 0]);
+			o[p] = o[p+1] = o[p+2] = dist;
+			o[p+3] = 255;
+		    }
+		    
+		    console.log(imgData.data, o);
+		    
+		    const imgOut = new ImageData(o, imgData.width, imgData.height);
+		    console.log(imgOut);
+		    
+		    
+		    // var gl = canvasOut.getContext("2d");
+		    // gl.putImageData(imgOut, 0, 0)
+		    
+		    console.timeEnd('distance');
 		}
-
-		console.log(imgData.data, o);
-		
-		const imgOut = new ImageData(o, imgData.width, imgData.height);
-		console.log(imgOut);
-
-		// var gl = canvasOut.getContext("2d");
-		// gl.putImageData(imgOut, 0, 0)
-
-		console.timeEnd('distance');
 		const render = kernels.isolateColor.setOutput([imgData.width, imgData.height]);
+		c.kernel = render;
 		
-		var threshold = 0;
+
 		c.draw = function () {
-		    render(imgData, ...[ 128, 0, 0 ], 96);
+		    var rgb = chroma(c.refColor).rgb();
+		    c.kernel(imgData, ...rgb, c.threshold)
 		}
 		console.time('draw')
 		c.draw();
