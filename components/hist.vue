@@ -82,7 +82,6 @@ td.nr { text-align: right }
     <div style="display:inline-block;vertical-align:top;margin:0;padding:0;position:relative;width:66%;padding-bottom:12px">
       <div
 	v-on:drop.prevent="dropHandler" v-on:dragover.prevent="dragOverHandler" 
-	v-on:drop.prevent="dropHandler"
 	ref="inputDiv">
 	<canvas v-on:drop.prevent="dropHandler" ref="input" id="input"></canvas>
       </div>
@@ -276,8 +275,6 @@ module.exports = {
 		canvas.height = img.height * scale;
 
 		c.pixelCount = canvas.width * canvas.height;
-
-		// console.log(c.calculateHistogram);
 		
 		ctxs.forEach((ctx, i) => {
 		    ctx.clearRect(0, 0, canvas.width, canvas.height);
