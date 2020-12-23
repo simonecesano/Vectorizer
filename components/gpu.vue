@@ -73,6 +73,7 @@ td.nr { text-align: right }
     <div>
       <canvas style="display:block;background:grey;" ref="output" id="output" height="600" width="600" style="width:600px"></canvas>
     </div>
+    <pre ref="fragShader">{{ fragSource }}</pre>
   </div>
 </template>
 <script>
@@ -171,12 +172,13 @@ module.exports = {
 
 	    // ------------------------------------------------------------
 	    // this is important:
-	    // premultipliedAlpha and preserveDrawingBuffer must be true
+	    // preserveDrawingBuffer must be true
 	    // in order to be possible to copy the output canvas
 	    // ------------------------------------------------------------
-	    var gl = canvasOut.getContext("webgl2", { premultipliedAlpha: false, preserveDrawingBuffer: true });
+	    var gl = canvasOut.getContext("webgl2", { preserveDrawingBuffer: true });
 	    var kernels = new Kernels({ canvas: canvasOut, context: gl, mode: 'gpu' })
 
+	    
 	    console.log(canvas);
 	    
 	    var img = new Image;
@@ -194,16 +196,45 @@ module.exports = {
 		ctx.drawImage(r, 0, 0);
 		
 		var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
+		function euclDistance(labA, labB){
+		    const r = Math.sqrt(
+			Math.pow(labA[0] - labB[0], 2) + Math.pow(labA[1] - labB[1], 2) + Math.pow(labA[2] - labB[2], 2)
+		    );
+		    return r
+		}
+		var l = imgData.width * imgData.height * 4;
+		var d = imgData.data
+		var o = new Uint8ClampedArray(l)
+
+		console.time('distance');
+		for (var p = 0; p < l; p += 4) {
+		    var rgb = [ d[p], d[p+1], d[p+2] ];
+		    var dist = euclDistance(rgb, [255, 0, 0]);
+		    o[p] = o[p+1] = o[p+2] = dist;
+		    o[p+3] = 255;
+		}
+
+		console.log(imgData.data, o);
 		
-		const render = kernels.grayScale.setOutput([imgData.width, imgData.height]);
+		const imgOut = new ImageData(o, imgData.width, imgData.height);
+		console.log(imgOut);
+
+		// var gl = canvasOut.getContext("2d");
+		// gl.putImageData(imgOut, 0, 0)
+
+		console.timeEnd('distance');
+		const render = kernels.isolateColor.setOutput([imgData.width, imgData.height]);
 		
 		var threshold = 0;
 		c.draw = function () {
-		    render(imgData);
+		    render(imgData, ...[ 128, 0, 0 ], 96);
 		}
 		console.time('draw')
 		c.draw();
 		console.timeEnd('draw')
+		c.fragSource = gl.getShaderSource(render.fragShader)
+				    
 		// console.log('frag shader', kernels.gpu.kernels[0].compiledFragmentShader)
 	    }
 	    img.src = src;
